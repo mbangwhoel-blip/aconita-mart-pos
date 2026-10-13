@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -7,8 +6,6 @@ class ApiService {
   ApiService._();
   static final ApiService instance = ApiService._();
 
-  static const String _defaultUrl = 'http://10.0.2.2:8000/api';
-  static const String _fallbackUrl = 'http://127.0.0.1:8000/api';
   static const String _laragonUrl = 'http://aconita-mart.test/api';
   static const String _keyBaseUrl = 'api_base_url';
   static const String _keyToken = 'api_token';
@@ -26,10 +23,7 @@ class ApiService {
   }
 
   Future<void> setBaseUrl(String url) async {
-    _baseUrl = url.trim();
-    if (_baseUrl.endsWith('/')) {
-      _baseUrl = _baseUrl.substring(0, _baseUrl.length - 1);
-    }
+    _baseUrl = url.endsWith('/') ? url.substring(0, url.length - 1) : url;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_keyBaseUrl, _baseUrl);
   }
@@ -44,7 +38,7 @@ class ApiService {
     }
   }
 
-  Map<String, String> get _headers {
+  Map<String, String> _headers() {
     final headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
@@ -55,95 +49,48 @@ class ApiService {
     return headers;
   }
 
-  /// Test server connectivity
-  Future<bool> checkConnection() async {
-    try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/products'), headers: _headers)
-          .timeout(const Duration(seconds: 4));
-      return response.statusCode == 200 || response.statusCode == 401;
-    } catch (_) {
-      // Try fallback URL if on desktop
-      if (_baseUrl != _fallbackUrl) {
-        try {
-          final resFallback = await http
-              .get(Uri.parse('$_fallbackUrl/products'), headers: _headers)
-              .timeout(const Duration(seconds: 2));
-          if (resFallback.statusCode == 200 || resFallback.statusCode == 401) {
-            _baseUrl = _fallbackUrl;
-            return true;
-          }
-        } catch (_) {}
-      }
-      return false;
-    }
+  Future<dynamic> get(String endpoint) async {
+    final uri = Uri.parse('$_baseUrl$endpoint');
+    final response = await http.get(uri, headers: _headers()).timeout(
+      const Duration(seconds: 15),
+    );
+    return _handleResponse(response);
   }
 
-  /// Login cashier / admin
-  Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl/login'),
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      ).timeout(const Duration(seconds: 8));
-
-      final data = jsonDecode(response.body);
-      if (response.statusCode == 200 && data['success'] == true) {
-        final token = data['data']['token'];
-        await setToken(token);
-        return {'success': true, 'user': data['data']['user'], 'token': token};
-      } else {
-        return {'success': false, 'message': data['message'] ?? 'Login gagal'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Gagal menghubungi server: $e'};
-    }
+  Future<dynamic> post(String endpoint, Map<String, dynamic> data) async {
+    final uri = Uri.parse('$_baseUrl$endpoint');
+    final response = await http.post(
+      uri,
+      headers: _headers(),
+      body: jsonEncode(data),
+    ).timeout(
+      const Duration(seconds: 25),
+    );
+    return _handleResponse(response);
   }
 
-  /// Sync Down: Fetch all products, categories, members from Laravel MySQL
-  Future<Map<String, dynamic>> syncDown() async {
-    try {
-      final response = await http
-          .get(Uri.parse('$_baseUrl/sync/down'), headers: _headers)
-          .timeout(const Duration(seconds: 15));
-
-      if (response.statusCode == 200) {
-        final body = jsonDecode(response.body);
-        return {'success': true, 'data': body['data']};
-      } else {
-        return {'success': false, 'message': 'HTTP ${response.statusCode}: ${response.body}'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Koneksi error: $e'};
-    }
+  Future<dynamic> syncDown() async {
+    return get('/sync/down');
   }
 
-  /// Sync Up: Upload offline orders queue to Laravel MySQL
-  Future<Map<String, dynamic>> syncUp(List<Map<String, dynamic>> orders) async {
-    if (orders.isEmpty) return {'success': true, 'synced_count': 0};
+  Future<dynamic> syncUp(dynamic payload) async {
+    if (payload is List) {
+      return post('/sync/up', {'orders': payload});
+    } else if (payload is Map<String, dynamic>) {
+      return post('/sync/up', payload);
+    }
+    return post('/sync/up', {'orders': []});
+  }
 
-    try {
-      final response = await http
-          .post(
-            Uri.parse('$_baseUrl/sync/up'),
-            headers: _headers,
-            body: jsonEncode({'orders': orders}),
-          )
-          .timeout(const Duration(seconds: 20));
-
-      final body = jsonDecode(response.body);
-      if (response.statusCode == 200 && body['success'] == true) {
-        return {
-          'success': true,
-          'synced_count': body['synced_count'],
-          'synced_orders': body['synced_orders'] ?? [],
-        };
-      } else {
-        return {'success': false, 'message': body['message'] ?? 'Gagal upload transaksi'};
-      }
-    } catch (e) {
-      return {'success': false, 'message': 'Koneksi error saat upload: $e'};
+  dynamic _handleResponse(http.Response res) {
+    final body = jsonDecode(res.body);
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      return body;
+    } else {
+      final msg = body is Map && body['message'] != null
+          ? body['message']
+          : 'Server Error (${res.statusCode})';
+      throw Exception(msg);
     }
   }
 }

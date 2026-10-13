@@ -68,6 +68,7 @@ class _PosScreenState extends State<PosScreen> {
     });
   }
 
+  // ignore: unused_element
   void _updateQuantity(int productId, int delta) {
     setState(() {
       if (!_cart.containsKey(productId)) return;
@@ -132,7 +133,7 @@ class _PosScreenState extends State<PosScreen> {
                     return ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.person)),
                       title: Text(m.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                      subtitle: Text('${m.memberNo} • Saldo: ${_curr.format(m.savingsBalance)}'),
+                      subtitle: Text('${m.memberNo} ? Saldo: ${_curr.format(m.savingsBalance)}'),
                       trailing: const Icon(Icons.chevron_right),
                       onTap: () {
                         setState(() => _selectedMember = m);
@@ -290,6 +291,7 @@ class _PosScreenState extends State<PosScreen> {
       paymentStatus: 'paid',
       totalProfit: totalProfit,
       isSynced: false,
+      items: orderItems,
     );
 
     await _db.createOrder(order, orderItems);
@@ -308,8 +310,14 @@ class _PosScreenState extends State<PosScreen> {
         action: SnackBarAction(
           label: 'Cetak Struk',
           textColor: Colors.white,
-          onPressed: () {
-            // Optional trigger thermal print
+          onPressed: () async {
+            try {
+              await PrinterService().printReceipt(order);
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+              }
+            }
           },
         ),
       ),
@@ -413,13 +421,37 @@ class _PosScreenState extends State<PosScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Container(
-                                      height: 70,
+                                      height: 75,
                                       width: double.infinity,
                                       decoration: BoxDecoration(
                                         color: Colors.grey.shade100,
                                         borderRadius: BorderRadius.circular(8),
                                       ),
-                                      child: const Icon(Icons.shopping_bag_outlined, size: 40, color: Colors.blueGrey),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: (p.imageUrl != null && p.imageUrl!.isNotEmpty)
+                                          ? Image.network(
+                                              p.imageUrl!,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (context, error, stackTrace) =>
+                                                  const Icon(Icons.inventory_2_outlined, size: 36, color: Colors.blueGrey),
+                                              loadingBuilder: (context, child, loadingProgress) {
+                                                if (loadingProgress == null) return child;
+                                                return Center(
+                                                  child: SizedBox(
+                                                    width: 20,
+                                                    height: 20,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 2,
+                                                      value: loadingProgress.expectedTotalBytes != null
+                                                          ? loadingProgress.cumulativeBytesLoaded /
+                                                              loadingProgress.expectedTotalBytes!
+                                                          : null,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            )
+                                          : const Icon(Icons.shopping_bag_outlined, size: 38, color: Colors.blueGrey),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(p.name, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -433,7 +465,7 @@ class _PosScreenState extends State<PosScreen> {
                                     ),
                                     if (inCartQty > 0)
                                       Container(
-                                        margin: const EdgeInsets.top(6),
+                                        margin: const EdgeInsets.only(top: 6),
                                         padding: const EdgeInsets.symmetric(vertical: 2),
                                         width: double.infinity,
                                         decoration: BoxDecoration(color: Colors.green.shade600, borderRadius: BorderRadius.circular(6)),
@@ -453,7 +485,7 @@ class _PosScreenState extends State<PosScreen> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, -3))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, -3))],
             ),
             child: Row(
               children: [

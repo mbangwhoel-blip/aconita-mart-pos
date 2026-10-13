@@ -28,6 +28,8 @@ class SyncService {
   bool _isOnline = false;
   bool get isOnline => _isOnline;
 
+  Timer? _periodicTimer;
+
   Future<void> initialize() async {
     // Check initial connectivity
     final connectivity = await Connectivity().checkConnectivity();
@@ -42,6 +44,20 @@ class SyncService {
         performFullSync();
       }
     });
+  }
+
+  void startPeriodicSync() {
+    _periodicTimer?.cancel();
+    _periodicTimer = Timer.periodic(const Duration(minutes: 5), (_) {
+      if (_isOnline && _status != SyncStatus.syncing) {
+        performFullSync();
+      }
+    });
+  }
+
+  void stopPeriodicSync() {
+    _periodicTimer?.cancel();
+    _periodicTimer = null;
   }
 
   /// Perform bidirectional synchronization:

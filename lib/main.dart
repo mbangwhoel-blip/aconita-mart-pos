@@ -6,7 +6,7 @@ import 'package:aconita_mart_pos/core/utils/date_formatter.dart';
 import 'package:aconita_mart_pos/core/services/api_service.dart';
 import 'package:aconita_mart_pos/core/services/sync_service.dart';
 import 'package:aconita_mart_pos/data/database/database_helper.dart';
-import 'package:aconita_mart_pos/presentation/screens/dashboard/mart_dashboard_screen.dart';
+import 'package:aconita_mart_pos/presentation/screens/mart_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -8,6 +8,8 @@ class Product extends Equatable {
   final String sku;
   final String name;
   final String? description;
+  final String? image;
+  final String? imageUrl;
   final String unit;
   final double costPrice;
   final double sellingPrice;
@@ -24,6 +26,8 @@ class Product extends Equatable {
     required this.sku,
     required this.name,
     this.description,
+    this.image,
+    this.imageUrl,
     this.unit = 'pcs',
     this.costPrice = 0,
     required this.sellingPrice,
@@ -51,6 +55,8 @@ class Product extends Equatable {
       'sku': sku,
       'name': name,
       'description': description,
+      'image': image,
+      'image_url': imageUrl,
       'unit': unit,
       'cost_price': costPrice,
       'selling_price': sellingPrice,
@@ -70,6 +76,8 @@ class Product extends Equatable {
       sku: (map['sku'] as String?) ?? '',
       name: (map['name'] as String?) ?? '',
       description: map['description'] as String?,
+      image: map['image'] as String?,
+      imageUrl: map['image_url'] as String?,
       unit: (map['unit'] as String?) ?? 'pcs',
       costPrice: ((map['cost_price'] ?? 0) as num).toDouble(),
       sellingPrice: ((map['selling_price'] ?? 0) as num).toDouble(),
@@ -88,6 +96,8 @@ class Product extends Equatable {
       sku: (json['sku'] as String?) ?? '',
       name: (json['name'] as String?) ?? '',
       description: json['description'] as String?,
+      image: json['image'] as String?,
+      imageUrl: json['image_url'] as String?,
       unit: (json['unit'] as String?) ?? 'pcs',
       costPrice: ((json['cost_price'] ?? 0) as num).toDouble(),
       sellingPrice: ((json['selling_price'] ?? 0) as num).toDouble(),
@@ -98,6 +108,44 @@ class Product extends Equatable {
     );
   }
 
+  Product copyWith({
+    int? id,
+    int? remoteId,
+    int? categoryId,
+    String? barcode,
+    String? sku,
+    String? name,
+    String? description,
+    String? image,
+    String? imageUrl,
+    String? unit,
+    double? costPrice,
+    double? sellingPrice,
+    double? memberPrice,
+    int? stock,
+    int? minStock,
+    bool? isActive,
+  }) {
+    return Product(
+      id: id ?? this.id,
+      remoteId: remoteId ?? this.remoteId,
+      categoryId: categoryId ?? this.categoryId,
+      barcode: barcode ?? this.barcode,
+      sku: sku ?? this.sku,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      image: image ?? this.image,
+      imageUrl: imageUrl ?? this.imageUrl,
+      unit: unit ?? this.unit,
+      costPrice: costPrice ?? this.costPrice,
+      sellingPrice: sellingPrice ?? this.sellingPrice,
+      memberPrice: memberPrice ?? this.memberPrice,
+      stock: stock ?? this.stock,
+      minStock: minStock ?? this.minStock,
+      isActive: isActive ?? this.isActive,
+    );
+  }
+
   @override
-  List<Object?> get props => [id, remoteId, sku, name, sellingPrice, stock];
+  List<Object?> get props => [id, remoteId, sku, name, sellingPrice, stock, image, imageUrl];
 }

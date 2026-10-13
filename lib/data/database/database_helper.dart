@@ -11,7 +11,7 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._();
 
   static const String _dbName = 'aconita_mart_pos_v1.db';
-  static const int _dbVersion = 1;
+  static const int _dbVersion = 2;
 
   Database? _database;
 
@@ -28,6 +28,14 @@ class DatabaseHelper {
       path,
       version: _dbVersion,
       onCreate: _onCreate,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) {
+          try {
+            await db.execute('ALTER TABLE products ADD COLUMN image TEXT');
+            await db.execute('ALTER TABLE products ADD COLUMN image_url TEXT');
+          } catch (_) {}
+        }
+      },
     );
   }
 
@@ -52,6 +60,8 @@ class DatabaseHelper {
         sku TEXT NOT NULL,
         name TEXT NOT NULL,
         description TEXT,
+        image TEXT,
+        image_url TEXT,
         unit TEXT DEFAULT 'pcs',
         cost_price REAL DEFAULT 0,
         selling_price REAL NOT NULL,
@@ -313,8 +323,8 @@ class DatabaseHelper {
     if (data['products'] is List) {
       for (final p in data['products']) {
         batch.rawInsert('''
-          INSERT OR REPLACE INTO products (remote_id, category_id, barcode, sku, name, description, unit, cost_price, selling_price, member_price, stock, min_stock, is_active)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT OR REPLACE INTO products (remote_id, category_id, barcode, sku, name, description, image, image_url, unit, cost_price, selling_price, member_price, stock, min_stock, is_active)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', [
           p['id'],
           p['category_id'],
@@ -322,6 +332,8 @@ class DatabaseHelper {
           p['sku'],
           p['name'],
           p['description'],
+          p['image'],
+          p['image_url'],
           p['unit'] ?? 'pcs',
           p['cost_price'] ?? 0,
           p['selling_price'] ?? 0,
